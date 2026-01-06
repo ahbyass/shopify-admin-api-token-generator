@@ -1,4 +1,4 @@
-# Shopify Admin API token exchange / generator (minimal installer)
+# Shopify Admin API token exchange / generator 2026
 
 This is a tiny Node/Express server that helps you **generate a Shopify Admin API access token** for a specific store by running the OAuth install flow.
 
@@ -8,6 +8,7 @@ It’s useful when you want to:
 - Quickly obtain an Admin API access token for development/testing.
 - Understand the OAuth callback security checks (state + HMAC) without a full app template.
 - Use Shopify Admin API from a Hydrogen project (server-side), or run local scripts/tools that need Admin access.
+  generator
 
 ## Why this is needed
 
