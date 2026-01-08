@@ -8,7 +8,6 @@ It’s useful when you want to:
 - Quickly obtain an Admin API access token for development/testing.
 - Understand the OAuth callback security checks (state + HMAC) without a full app template.
 - Use Shopify Admin API from a Hydrogen project (server-side), or run local scripts/tools that need Admin access.
-  generator
 
 ## Why this is needed
 
