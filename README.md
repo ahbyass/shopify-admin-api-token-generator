@@ -8,7 +8,6 @@ It’s useful when you want to:
 - Quickly obtain an Admin API access token for development/testing.
 - Understand the OAuth callback security checks (state + HMAC) without a full app template.
 - Use Shopify Admin API from a Hydrogen project (server-side), or run local scripts/tools that need Admin access.
-  generator
 
 ## Why this is needed
 
@@ -49,9 +48,9 @@ This repo implements exactly that in a minimal way.
 
 In your Shopify app configuration:
 
-- **App URL**: `https://YOUR_NGROK_DOMAIN` (example: `https://bg.ngrok.dev`)
+- **App URL**: `https://YOUR_NGROK_DOMAIN` (example: `https://123.ngrok.dev`)
 - **Allowed redirection URL(s)**:
-  - `https://YOUR_NGROK_DOMAIN/auth/callback` (example: `https://bg.ngrok.dev/auth/callback`)
+  - `https://YOUR_NGROK_DOMAIN/auth/callback` (example: `https://123.ngrok.dev/auth/callback`)
 
 The redirect URL must match exactly what you set in `SHOPIFY_REDIRECT_URI`.
 
