@@ -40,7 +40,7 @@ This repo implements exactly that in a minimal way.
 
 ## Prerequisites
 
-- Node.js installed
+- Node.js 18+ installed
 - An ngrok account + a domain (or use a temporary URL)
 - A Shopify app created in the Shopify Dev Dashboard / Partners
 

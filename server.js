@@ -1,8 +1,8 @@
-require('dotenv').config();
-const express = require('express');
-const crypto = require('crypto');
-const fetch = require('node-fetch');
+import dotenv from 'dotenv';
+import express from 'express';
+import crypto from 'crypto';
 
+dotenv.config();
 const app = express();
 
 const CLIENT_ID = process.env.SHOPIFY_CLIENT_ID;

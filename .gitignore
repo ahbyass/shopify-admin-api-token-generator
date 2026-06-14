@@ -1,2 +1,4 @@
 .env
+.env.admin
 /node_modules
+.DS_Store
