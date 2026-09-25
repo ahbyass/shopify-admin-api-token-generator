@@ -1,0 +1,6 @@
+{
+  "port": 3001,
+  "ngrokDomain": "your-domain.ngrok.dev",
+  "scopes": "read_products",
+  "startTunnel": true
+}

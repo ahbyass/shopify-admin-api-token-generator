@@ -1,169 +1,158 @@
-# Shopify Admin API token exchange / generator 2026
+# Shopify Admin API token generator
 
-This is a tiny Node/Express server that helps you **generate a Shopify Admin API access token** for a specific store by running the OAuth install flow.
+Generate a **Shopify Admin API access token** for a client's custom app through a local browser workflow. This tool handles Shopify OAuth authorization, the callback and token exchange, so you can approve access and copy a non-expiring offline token into your integration.
 
-It’s useful when you want to:
+Built for Shopify developers, freelancers and agencies who create a separate app for each client store. Runs locally with Bun, React and TypeScript; the setup form and generated tokens are accessible only on localhost.
 
-- Prove your Shopify app credentials and redirect URL are configured correctly.
-- Quickly obtain an Admin API access token for development/testing.
-- Understand the OAuth callback security checks (state + HMAC) without a full app template.
-- Use Shopify Admin API from a Hydrogen project (server-side), or run local scripts/tools that need Admin access.
+## Why this exists
 
-## Why this is needed
+Connecting a client's store to a script or backend integration involves more than obtaining a client ID and secret. You need to configure app and redirect URLs, request the right permissions, handle Shopify's approval callback and exchange the authorization code for an access token.
 
-Shopify Admin API requests must be authenticated with an **access token**.
+Repeating that plumbing for every client is cumbersome. This project gives you a reusable local setup tool: configure your ngrok domain once, enter each client's app details, approve the connection and copy the resulting token. You can use that token for product or customer integrations, reporting scripts and other Admin API tasks permitted by the scopes you request.
 
-As of recent Shopify platform/admin changes (Jan 2026), many workflows that previously relied on generating or copying a long-lived Admin API token directly from the Shopify Admin UI are no longer available or are more restricted. In practice, this means you often need to obtain tokens via a Shopify app using an OAuth-based flow.
-
-Shopify’s recommended token acquisition patterns and security posture have also been evolving (for example, support for expiring offline tokens + refresh tokens and stronger guidance around correct token flows). This repo is intentionally minimal and explicit so you can validate your end-to-end setup (credentials, redirect URLs, and HMAC/state checks) without pulling in a full framework template.
-
-To get that token, Shopify requires an authorization step where the merchant approves your requested scopes. When the merchant approves, Shopify redirects back to your server with a `code` and an `hmac`. Your backend must:
-
-1. Verify the request is authentic (HMAC).
-2. Verify the request belongs to the same browser session you started (state).
-3. Exchange the authorization `code` for an access token.
-
-This repo implements exactly that in a minimal way.
-
-> Note on terminology: Shopify also supports an embedded-app flow called **token exchange** (session token → access token). This repo implements the classic **authorization code grant** flow (`code` → access token). If you’re building an embedded app, you’ll usually want token exchange instead.
+You still create and configure the Shopify app yourself. The tool handles the connection workflow and local recovery; your integration uses the resulting token independently.
 
 ## What it does
 
-- `GET /install?shop=your-store.myshopify.com`
-  - Redirects to Shopify’s grant screen (`/admin/oauth/authorize`) using your app’s `client_id`, requested scopes, redirect URI, and a random `state`.
+- **Generates offline Admin API tokens:** requests non-expiring access through Shopify's OAuth authorization code grant.
+- **Derives your Shopify URLs:** shows the App URL and allowed redirection URL for your configured ngrok domain.
+- **Starts locally with one command:** builds the UI and optionally launches the HTTPS tunnel with `bun start`.
+- **Keeps client setup local:** restricts the form and token results to localhost while exposing the OAuth callback through ngrok.
+- **Recovers after a restart:** stores encrypted connection details locally and lets you restart interrupted approval.
+- **Supports successive client setups:** clears the current connection when you are ready to configure another store.
 
-- `GET /auth/callback`
-  - Receives Shopify’s redirect (includes `code`, `hmac`, `shop`, `state`, …).
-  - Verifies the HMAC.
-  - Exchanges the `code` for an access token via `POST https://{shop}/admin/oauth/access_token`.
-  - Prints the token in your terminal.
+## Supported Shopify apps
 
-## Prerequisites
+This workflow is intended for separately configured client custom apps that support non-expiring offline tokens. It requires access to the app's client ID and secret, and permission to approve its installation on the store.
 
-- Node.js 18+ installed
-- An ngrok account + a domain (or use a temporary URL)
-- A Shopify app created in the Shopify Dev Dashboard / Partners
+Shopify's expiring-token requirements for public apps do not apply to custom apps. Public apps have different requirements, and this tool does not implement token refresh. See [Shopify's token requirements and affected app types](https://shopify.dev/changelog/expiring-offline-access-tokens-required-for-all-public-apps-as-of-january-1-2027).
 
-## 1) Shopify app settings
+## Quick start
 
-In your Shopify app configuration:
+Install [Bun](https://bun.sh) and the [ngrok CLI](https://ngrok.com/download). Authenticate ngrok with your account and obtain an assigned or reserved domain before setup.
 
-- **App URL**: `https://YOUR_NGROK_DOMAIN` (example: `https://123.ngrok.dev`)
-- **Allowed redirection URL(s)**:
-  - `https://YOUR_NGROK_DOMAIN/auth/callback` (example: `https://123.ngrok.dev/auth/callback`)
-
-The redirect URL must match exactly what you set in `SHOPIFY_REDIRECT_URI`.
-
-## 2) Environment variables
-
-Create a `.env` file in the project root:
-
-```dotenv
-SHOPIFY_CLIENT_ID=your_client_id
-SHOPIFY_CLIENT_SECRET=your_client_secret
-SHOPIFY_SCOPES=write_draft_orders,read_products
-SHOPIFY_REDIRECT_URI=https://YOUR_NGROK_DOMAIN/auth/callback
-PORT=3001
-
-# Optional (Dec 2025+): request an expiring offline token
-# SHOPIFY_OFFLINE_TOKEN_EXPIRING=1
+```sh
+git clone https://github.com/ahbyass/shopify-admin-api-token-generator.git
+cd shopify-admin-api-token-generator
+bun install
+bun run setup
+bun start
 ```
 
-Important:
+Setup asks for your ngrok domain, local port, default Shopify permissions and whether to start the tunnel automatically. It writes an ignored `config.local.json`. By default, `bun start` launches both the local server and ngrok. Open the localhost link printed in the terminal.
 
-- `SHOPIFY_CLIENT_SECRET` is NOT the same as `SHOPIFY_CLIENT_ID`.
-- Scopes are comma-separated.
-- Scopes must match the app installed
+Bun runs the TypeScript server directly. Startup bundles the React browser code and compiles Tailwind into ignored files in `public/`; there is no separate build command to remember. Run these commands from the project directory.
 
-## 3) Install dependencies
+## Configure once
 
-```bash
-npm install
+You can also copy [config.example.json](config.example.json) to `config.local.json`:
+
+```json
+{
+  "port": 3001,
+  "ngrokDomain": "your-domain.ngrok.dev",
+  "scopes": "read_products",
+  "startTunnel": true
+}
 ```
 
-## 4) Start the server
+The app derives both Shopify URLs from that domain:
 
-```bash
-node server.js
+| Shopify setting         | Value                                         |
+| ----------------------- | --------------------------------------------- |
+| App URL                 | `https://your-domain.ngrok.dev`               |
+| Allowed redirection URL | `https://your-domain.ngrok.dev/auth/callback` |
+
+Set `startTunnel` to `false` if you manage your tunnel separately. Configure it to forward to `http://127.0.0.1:3001`, or your chosen port. The bundled launcher disables ngrok’s request inspector so it does not record OAuth callback payloads.
+
+No environment file is needed. The start and setup commands explicitly disable automatic `.env` loading. Enter each client’s **client ID and client secret in the local app interface**. `config.local.json` only stores reusable settings: your tunnel domain, port, default permissions and whether to start ngrok.
+
+## Connect a client
+
+1. Create the client’s app in the [Shopify Dev Dashboard](https://dev.shopify.com/dashboard).
+2. Configure a non-embedded app, copy the two URLs from the local tool, choose the permissions, release the app version and configure its distribution for the client’s store.
+3. Enter the store’s `myshopify.com` address, client ID, client secret and matching permissions in the local form.
+4. Select **Connect with Shopify**. Complete approval in the same browser within 10 minutes.
+5. Shopify returns through the tunnel to the localhost result page. Copy the token into your integration’s server-side configuration.
+6. Select **Clear token & set up another client** when finished.
+
+This uses Shopify’s authorization code grant with `expiring=0`. Tokens have no scheduled expiry, but uninstalling the app or revoking its credentials can invalidate them. It does not use the 24-hour client credentials grant.
+
+The public App URL shows a small informational homepage, not the setup form. It is available only while the server and tunnel are running. Stopping the tool does not revoke a token already issued.
+
+## Restart and recovery
+
+Run `bun start` again after a stop or crash, then open localhost in the same browser. A link on the setup page returns you to the saved connection.
+
+- Pending approval survives a restart while its 10-minute state is valid.
+- Completed tokens remain available for 24 hours.
+- Failed or interrupted exchanges offer **Restart Shopify approval**, using the encrypted saved app details.
+- Retry requests fresh authorization. It never blindly replays an authorization code that Shopify may already have consumed.
+- Clearing the session removes its saved credentials, token and pending state. Expired sessions are periodically pruned.
+
+An abrupt stop after Shopify issues a token but before it reaches local storage cannot recover that response. Restart approval in that case. Browser cookies are still required: encrypted storage is not a searchable credential vault for other browsers.
+
+## Local files and logs
+
+All runtime files live in the ignored `.local/` directory:
+
+| File           | Purpose                                                                      |
+| -------------- | ---------------------------------------------------------------------------- |
+| `sessions.enc` | AES-256-GCM encrypted sessions, pending app credentials and completed tokens |
+| `session.key`  | Local encryption key, owner-readable/writable only                           |
+| `events.jsonl` | Timestamped lifecycle events; rotates at approximately 1 MB with one backup  |
+| `server.pid`   | Prevents two app instances from writing the same session file                |
+
+The key and encrypted data share this computer. Encryption protects against accidental file disclosure, not someone with access to your user account. Do not commit or share `.local/`. Logs contain event names only—no secrets, tokens, authorization codes, request URLs or Shopify response bodies.
+
+If storage is unreadable, startup stops rather than silently replacing it. Restore the matching key and snapshot, or remove `sessions.enc` to discard saved sessions and start fresh. Clearing local data never uninstalls a Shopify app or revokes a Shopify token.
+
+## Development
+
+```sh
+bun run check         # Strict TypeScript checks
+bun test              # HTTP flows, restart recovery and encryption
+bun run lint          # Oxlint checks
+bun run format        # Oxfmt: format source and documentation
+bun run format:check  # Oxfmt: check formatting without changing files
 ```
 
-You should see something like:
+Restart `bun start` after editing source. The tests cover backend OAuth, access restrictions and encrypted recovery using simulated Shopify responses and temporary stores. There are no browser, screenshot or component tests, and no real apps are installed.
 
-- `Token installer listening on http://localhost:3001`
+The UI uses React and TypeScript, with Tailwind utilities directly in the components. Express renders the initial page, and React hydrates the interactive controls. Forms submit to the server routes; OAuth and encrypted storage stay on the server.
 
-## 5) Start ngrok
-
-If you have a reserved domain:
-
-```bash
-ngrok http --domain=YOUR_NGROK_DOMAIN 3001
-```
-
-Example:
-
-```bash
-ngrok http --domain=bg.ngrok.dev 3001
-```
-
-## 6) Run the install flow
-
-Open this in your browser:
+Start with [the code walkthrough](docs/code-walkthrough.md). It follows one connection from startup through approval, callback, token storage and retry.
 
 ```text
-https://YOUR_NGROK_DOMAIN/install?shop=YOUR_SHOP.myshopify.com
+src/
+  index.ts                  Application startup and shutdown
+  setup.ts                  First-run configuration
+  config.ts                 Baseline configuration
+  runtime/                  Browser assets, process lock and ngrok lifecycle
+  server/
+    app.ts                  HTTP middleware and route ordering
+    connection.ts           Shared connection/session types
+    local-session.ts        Localhost access, browser cookies and CSRF
+    setup-form.ts           Input normalization and validation
+    routes/setup.ts         Setup, installation, result, retry and reset
+    routes/callback.ts      Public Shopify callback
+    shopify.ts              Authorization URLs, HMAC and token exchange
+    session-store.ts        Encrypted persistence and expiry
+    logger.ts               Diagnostics without request data
+    renderPage.tsx          Server-rendered React document and safe page data
+  client/
+    entry.tsx               Hydrates the server-rendered page
+    connection/             Page, form, token result, copy field and data schema
+    tailwind.css            Tailwind entrypoint and theme values
 ```
-
-- Approve the scopes on the Shopify grant screen.
-- After redirect, the server prints the access token in the terminal.
-
-## Using the token
-
-For Admin API requests, include the token in:
-
-- Header: `X-Shopify-Access-Token: <token>`
-
-Example GraphQL endpoint:
-
-- `https://{shop}.myshopify.com/admin/api/2026-01/graphql.json`
 
 ## Troubleshooting
 
-### “HMAC mismatch”
+- **Redirect mismatch:** the URL entered in the form must exactly match Shopify’s allowed redirection URL.
+- **Verification failed:** confirm the client ID and secret belong to the same app, then start a new connection.
+- **Tunnel stopped:** resolve the ngrok error printed in the terminal, then restart. Your encrypted sessions remain available.
+- **Address already in use:** stop the other server or change the configured port.
+- **Public page has no form:** open `http://localhost:3001`, not your ngrok domain or `127.0.0.1`.
+- **Shopify denied access:** check distribution, store permissions, released version and requested scopes.
 
-Most common causes:
-
-- `SHOPIFY_CLIENT_SECRET` is wrong (or has whitespace). Re-copy it from the Dev Dashboard.
-- You’re using credentials from a different app than the one installed.
-
-### ngrok exits with code 1
-
-Run ngrok and read the full error output. Common causes:
-
-- Domain not reserved / not on your ngrok plan
-- Not logged in (`ngrok config add-authtoken ...`)
-- Another process already using the domain or port
-
-### Wrong URL
-
-Start installs at:
-
-- `/install?shop=...`
-
-Not at:
-
-- `/auth/callback/...`
-
-The callback URL is for Shopify to redirect to after approval.
-
-## Security notes (don’t skip in real apps)
-
-This repo is intentionally minimal:
-
-- It uses an in-memory `state` store (not suitable for multi-instance or restarts).
-- It prints tokens to the console (don’t do this in production).
-- You should store tokens securely (DB/secret manager) and implement proper session handling.
-
-## References
-
-- Authorization code grant (manual): https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/authorization-code-grant
-- Token exchange (session token → access token): https://shopify.dev/docs/apps/build/authentication-authorization/access-tokens/token-exchange
+See [Shopify’s standalone-app authentication guide](https://shopify.dev/docs/apps/build/authentication-authorization/authenticate-standalone-apps).

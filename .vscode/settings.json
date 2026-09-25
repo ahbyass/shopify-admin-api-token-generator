@@ -1,0 +1,9 @@
+{
+  "oxc.fmt.configPath": ".oxfmtrc.json",
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit"
+  },
+  "js/ts.format.enabled": false
+}

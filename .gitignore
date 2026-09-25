@@ -2,3 +2,11 @@
 .env.admin
 /node_modules
 .DS_Store
+
+# Local configuration, encrypted sessions and generated browser code
+config.local.json
+.local/
+public/ui.js
+.env.*
+
+public/styles.css
